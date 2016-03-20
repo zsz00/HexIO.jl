@@ -5,38 +5,30 @@ module StructIO
     using Base.Meta
     export @struct, unpack, pack, fix_endian
 
-    fix_endian(x,::Val{:NativeEndian}) = x
-    if Base.ENDIAN_BOM == 0x01020304
-        fix_endian(x,::Val{:BigEndian}) = x
-        fix_endian(x,::Val{:LittleEndian}) = bsawp(x)
-    else
-        fix_endian(x,::Val{:BigEndian}) = bsawp(x)
-        fix_endian(x,::Val{:LittleEndian}) = x
+    needs_bswap(endianness) = (ENDIAN_BOM == 0x01020304) ?
+        endianness == :LittleEndian : endianness == :BigEndian
+    fix_endian(x, endianness) = needs_bswap(x) ? bswap(x) : x
+    
+    # Alignment traits
+    abstract PackingStrategy
+    immutable Packed <: PackingStrategy; end
+    immutable Default <: PackingStrategy; end
+    function strategy
     end
 
-    # Default alignof function
-    @pure function alignof(T::DataType)
-        nfields(T) == 0 && return nextpow2(sizeof(T))
-        maximum(map(S->(isbits(S) ? alignof(S) : sizeof(Ptr{Void})),T.types))
-    end
-
+    # Sizeof computation
     round_up(offset, alignemnt) = offset +
         mod(alignemnt - mod(offset, alignemnt), alignemnt)
 
-    @pure function sizeof_default(T::DataType)
-        @assert nfields(T) != 0 && isbits(T)
-        accum = 0
-        for field in T.types
-            round_up(accum, alignof(field))
-            accum += sizeof(field)
-        end
-        accum
+    @pure function sizeof(T::DataType, ::Type{Default})
+        Core.sizeof(T)
     end
 
-    @pure function sizeof_packed(T::DataType)
+    @pure function sizeof(T::DataType, ::Type{Packed})
         @assert nfields(T) != 0 && isbits(T)
         sum(map(x->sizeof(x), T.types))
     end
+    sizeof(T::DataType) = sizeof(T, nfields(T) == 0 ? Default : strategy(T))
 
     # Generates methods for unpack!, pack!, and sizeof
     macro struct(typ, annotations...)
@@ -52,54 +44,74 @@ module StructIO
         isexpr(typname,:curly) && (typname = typname.args[1])
         ret = Expr(:toplevel, typ)
         if alignment == :align_default
-            push!(ret.args,
-                :(Base.sizeof(T::Type{$typname}) = StructIO.sizeof_default(T)))
+            push!(ret.args, :(StructIO.strategy(::Type{$typname}) = StructIO.Default))
         else
-            push!(ret.args,
-                :(Base.sizeof(T::Type{$typname}) = StructIO.sizeof_default(T)))
+            @assert alignment == :align_packed
+            push!(ret.args, :(StructIO.strategy(::Type{$typname}) = StructIO.Packed))
         end
-        push!(ret.args,
-            :(StructIO.unpack(io::IO, T::Type{$typname}, endianness::Val) =
-                StructIO.unpack(io, T, endianness, Val{$(quot(alignment))}())))
+        push!(ret.args, :(Base.sizeof(::Type{$typname}) = StructIO.sizeof($typname)))
+        push!(ret.args, :(Base.sizeof(::$typname) = StructIO.sizeof($typname)))
         esc(ret)
     end
 
-    # This is temporary. I expect to be able to do this without a generated
-    # function, but it would require a little more constant folding capability
-    # in the compiler to make it efficient
-    """
-        Unpacks the struct `T` from an IO object, with the given data stream
-        endianness and the given alignment. endianness defaults to the the hosts
-        native endianness, while alignment default to whichever default
-        alignment was specified using the struct macro.
-    """
-    @generated function unpack(io::IO, T::Type, endianness::Val, alignment::Val)
-        offset = 0
-        reached_offset = 0
-        T = T.parameters[1]
-        # bitstypes just get read (with endian fix)
-        nfields(T) == 0 && return :(StructIO.fix_endian(read(io, T), endianness))
-        ret = Expr(:block)
-        cns = Expr(:call,T)
-        alignment = alignment.parameters[1]
-        for i = 1:nfields(T)
-            fieldT = fieldtype(T,i)
-            fieldsize = sizeof(fieldT)
-            (alignment != :align_packed) &&
-                (offset = round_up(offset, alignof(fieldT)))
-            if reached_offset != offset
-                push!(ret.args,:(skip(io,$(offset-reached_offset))))
+    function unsafe_unpack(io::IO, T::Type, target, endianness, ::Type{Default})
+        if nfields(T) == 0
+            sz = Core.sizeof(T)
+            unsafe_read(io, target, sz)
+            if needs_bswap(endianness) 
+                # Special case small sizes, LLVM should turn this into a jump
+                # table
+                if sz == 1
+                elseif sz == 2
+                    ptr = unsafe_convert(Ptr{UInt16}, target)
+                    unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+                elseif sz == 4
+                    ptr = unsafe_convert(Ptr{UInt32}, target)
+                    unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+                elseif sz == 8
+                    ptr = unsafe_convert(Ptr{UInt64}, target)
+                    unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+                else
+                    for i = 0:div(sz,2)
+                        ptrhigh = unsafe_convert(Ptr{UInt8}, target) + 8*(sz-i)
+                        ptrlow = unsafe_convert(Ptr{UInt8}, target) + 8i
+                        high = unsafe_load(ptrhigh)
+                        low = unsafe_load(ptrlow)
+                        unsafe_store(ptrhigh, low)
+                        unsafe_store(ptrlow, high)
+                    end
+                end
             end
-            offset = reached_offset = offset + fieldsize
-            sym = symbol("field$i")
-            push!(ret.args,:($sym = unpack(io,$fieldT,endianness)))
-            push!(cns.args,sym)
+        elseif !needs_bswap(endianness)
+            sz = Core.sizeof(T)
+            unsafe_read(io, target, sz)
+        else
+            reached = 0
+            for i = 1:nfields(T)
+                fT = fieldtype(T, i)
+                foffs = fieldoffset(T, i)
+                skip(io, reached - foffs)
+                reached = foffs
+                unsafe_unpack(io, fT,
+                    Base.unsafe_convert(Ptr{Void}, target) + foffs, endianness, Default)
+                reached += Core.sizeof(fT)
+            end      
         end
-        push!(ret.args,cns)
-        ret
     end
-    unpack(io::IO, T::Type) = unpack(io, T, Val{:NativeEndian}())
-    # This one gets overwritten by @struct
-    unpack(io::IO, T::Type, endianness::Val) = unpack(io, T, endianness, Val{:align_default}())
+
+    function unsafe_unpack(io::IO, T::Type, target, endianness, ::Type{Packed})
+        nfields(T) == 0 && return unsafe_unpack(io, T, target, endianness, Default)
+        for i = 1:nfields(T)
+            fT = fieldtype(T, i)
+            unsafe_unpack(io, fT,
+                Base.unsafe_convert(Ptr{Void}, target) + fieldoffset(T, i), endianness, Packed)
+        end
+    end
+    
+    function unpack(io::IO, T::Type, endianness = :NativeEndian)
+        r = Ref{T}()
+        unsafe_unpack(io, T, r, endianness, nfields(T) == 0 ? Default : strategy(T))
+        r[]
+    end
 
 end # module
