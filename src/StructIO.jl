@@ -8,7 +8,7 @@ module StructIO
     needs_bswap(endianness) = (ENDIAN_BOM == 0x01020304) ?
         endianness == :LittleEndian : endianness == :BigEndian
     fix_endian(x, endianness) = needs_bswap(x) ? bswap(x) : x
-    
+
     # Alignment traits
     abstract PackingStrategy
     immutable Packed <: PackingStrategy; end
@@ -58,23 +58,23 @@ module StructIO
         if nfields(T) == 0
             sz = Core.sizeof(T)
             unsafe_read(io, target, sz)
-            if needs_bswap(endianness) 
+            if needs_bswap(endianness)
                 # Special case small sizes, LLVM should turn this into a jump
                 # table
                 if sz == 1
                 elseif sz == 2
-                    ptr = unsafe_convert(Ptr{UInt16}, target)
+                    ptr = Base.unsafe_convert(Ptr{UInt16}, target)
                     unsafe_store!(ptr, bswap(unsafe_load(ptr)))
                 elseif sz == 4
-                    ptr = unsafe_convert(Ptr{UInt32}, target)
+                    ptr = Base.unsafe_convert(Ptr{UInt32}, target)
                     unsafe_store!(ptr, bswap(unsafe_load(ptr)))
                 elseif sz == 8
-                    ptr = unsafe_convert(Ptr{UInt64}, target)
+                    ptr = Base.unsafe_convert(Ptr{UInt64}, target)
                     unsafe_store!(ptr, bswap(unsafe_load(ptr)))
                 else
                     for i = 0:div(sz,2)
-                        ptrhigh = unsafe_convert(Ptr{UInt8}, target) + 8*(sz-i)
-                        ptrlow = unsafe_convert(Ptr{UInt8}, target) + 8i
+                        ptrhigh = Base.unsafe_convert(Ptr{UInt8}, target) + 8*(sz-i)
+                        ptrlow = Base.unsafe_convert(Ptr{UInt8}, target) + 8*i
                         high = unsafe_load(ptrhigh)
                         low = unsafe_load(ptrlow)
                         unsafe_store(ptrhigh, low)
@@ -95,7 +95,7 @@ module StructIO
                 unsafe_unpack(io, fT,
                     Base.unsafe_convert(Ptr{Void}, target) + foffs, endianness, Default)
                 reached += Core.sizeof(fT)
-            end      
+            end
         end
     end
 
@@ -107,7 +107,7 @@ module StructIO
                 Base.unsafe_convert(Ptr{Void}, target) + fieldoffset(T, i), endianness, Packed)
         end
     end
-    
+
     function unpack(io::IO, T::Type, endianness = :NativeEndian)
         r = Ref{T}()
         unsafe_unpack(io, T, r, endianness, nfields(T) == 0 ? Default : strategy(T))
