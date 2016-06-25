@@ -17,8 +17,8 @@ module StructIO
     end
 
     # Sizeof computation
-    round_up(offset, alignemnt) = offset +
-        mod(alignemnt - mod(offset, alignemnt), alignemnt)
+    round_up(offset, alignment) = offset +
+        mod(alignment - mod(offset, alignment), alignment)
 
     @pure function sizeof(T::DataType, ::Type{Default})
         Core.sizeof(T)
@@ -26,7 +26,7 @@ module StructIO
 
     @pure function sizeof(T::DataType, ::Type{Packed})
         @assert nfields(T) != 0 && isbits(T)
-        sum(map(x->sizeof(x), T.types))
+        sum(sizeof, T.types)
     end
     sizeof(T::DataType) = sizeof(T, nfields(T) == 0 ? Default : strategy(T))
 
