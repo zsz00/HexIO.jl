@@ -1,7 +1,8 @@
 using StructIO
+using Compat
 using Base.Test
 
-@struct immutable TwoUInts
+@io immutable TwoUInts
     x::UInt
     y::UInt
 end
@@ -12,15 +13,15 @@ write(buf, UInt(2))
 seekstart(buf)
 @test unpack(buf, TwoUInts) == TwoUInts(1,2)
 
-abstract SomeAbstractType
-@struct immutable SomeConcreteType <: SomeAbstractType
+@compat abstract type SomeAbstractType end
+@io immutable SomeConcreteType <: SomeAbstractType
     A::UInt32
     B::UInt16
     C::UInt32
     D::UInt8
 end align_packed
 
-@struct immutable ParametricType{S,T}
+@io immutable ParametricType{S,T}
     A::S
     B::T
     C::T

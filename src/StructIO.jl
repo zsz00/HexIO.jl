@@ -3,14 +3,15 @@ module StructIO
 
     using Base: @pure
     using Base.Meta
-    export @struct, unpack, pack, fix_endian
+    using Compat
+    export @io, unpack, pack, fix_endian
 
     needs_bswap(endianness) = (ENDIAN_BOM == 0x01020304) ?
         endianness == :LittleEndian : endianness == :BigEndian
     fix_endian(x, endianness) = needs_bswap(x) ? bswap(x) : x
 
     # Alignment traits
-    abstract PackingStrategy
+    @compat abstract type PackingStrategy end
     immutable Packed <: PackingStrategy; end
     immutable Default <: PackingStrategy; end
     function strategy
@@ -31,7 +32,7 @@ module StructIO
     sizeof(T::DataType) = sizeof(T, nfields(T) == 0 ? Default : strategy(T))
 
     # Generates methods for unpack!, pack!, and sizeof
-    macro struct(typ, annotations...)
+    macro io(typ, annotations...)
         alignment = :align_default
         if length(annotations) == 1
             ann = annotations[1]
