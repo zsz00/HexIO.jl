@@ -109,7 +109,16 @@ function unsafe_unpack(io::IO, T::Type, target, endianness, ::Type{Packed})
     end
 end
 
-function unpack(io::IO, T::Type, endianness = :NativeEndian)
+"""
+unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
+
+Given an input `io`, unpack type `T`, byte-swapping according to the given
+`endianness` of `io`. If `endianness` is `:NativeEndian` (the default), no
+byteswapping will occur.  If `endianness` is `:LittleEndian` or `:BigEndian`,
+byteswapping will occur of the endianness of the currently running host does
+not match the endianness of `io`.
+"""
+function unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
     r = Ref{T}()
     unsafe_unpack(io, T, r, endianness, nfields(T) == 0 ? Default : strategy(T))
     r[]
