@@ -7,12 +7,6 @@ using Base.Test
     y::UInt
 end
 
-buf = IOBuffer()
-write(buf, UInt(1))
-write(buf, UInt(2))
-seekstart(buf)
-@test unpack(buf, TwoUInts) == TwoUInts(1,2)
-
 @compat abstract type SomeAbstractType end
 @io immutable SomeConcreteType <: SomeAbstractType
     A::UInt32
@@ -25,4 +19,12 @@ end align_packed
     A::S
     B::T
     C::T
+end
+
+@testset "unpack()" begin
+    buf = IOBuffer()
+    write(buf, UInt(1))
+    write(buf, UInt(2))
+    seekstart(buf)
+    @test unpack(buf, TwoUInts) == TwoUInts(1,2)
 end
