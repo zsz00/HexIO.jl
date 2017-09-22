@@ -2,18 +2,30 @@ using StructIO
 using Compat
 using Base.Test
 
+# First, exercise the `@io` macro a bit, to ensure it can handle different
+# kinds of type declarations
 @io immutable TwoUInts
     x::UInt
     y::UInt
 end
 
-@compat abstract type SomeAbstractType end
-@io immutable SomeConcreteType <: SomeAbstractType
+@compat abstract type AbstractType end
+@io immutable ConcreteType <: AbstractType
     A::UInt32
     B::UInt16
-    C::UInt32
+    C::UInt128
     D::UInt8
 end align_packed
+
+@io immutable PackedNestedType
+    A::ConcreteType
+    B::ConcreteType
+end align_packed
+
+@io immutable DefaultNestedType
+    A::ConcreteType
+    B::ConcreteType
+end
 
 @io immutable ParametricType{S,T}
     A::S
@@ -22,9 +34,96 @@ end align_packed
 end
 
 @testset "unpack()" begin
+    # Test native unpacking
     buf = IOBuffer()
     write(buf, UInt(1))
     write(buf, UInt(2))
     seekstart(buf)
     @test unpack(buf, TwoUInts) == TwoUInts(1,2)
+
+    # Now, test explicitly setting the endianness
+    for endian in [:LittleEndian, :BigEndian]
+        buf = IOBuffer()
+        write(buf, fix_endian(UInt32(1), endian))
+        write(buf, fix_endian(UInt16(2), endian))
+        write(buf, fix_endian(UInt128(3), endian))
+        write(buf, fix_endian(UInt8(4),  endian))
+        seekstart(buf)
+
+        @test unpack(buf, ConcreteType, endian) == ConcreteType(1, 2, 3, 4)
+    end
+
+    # Test packed nested types across endianness
+    for endian in [:LittleEndian, :BigEndian]
+        buf = IOBuffer()
+        write(buf, fix_endian(UInt32(1), endian))
+        write(buf, fix_endian(UInt16(2), endian))
+        write(buf, fix_endian(UInt128(3), endian))
+        write(buf, fix_endian(UInt8(4), endian))
+        write(buf, fix_endian(UInt32(5), endian))
+        write(buf, fix_endian(UInt16(6), endian))
+        write(buf, fix_endian(UInt128(7), endian))
+        write(buf, fix_endian(UInt8(8), endian))
+        seekstart(buf)
+
+        x = PackedNestedType(ConcreteType(1,2,3,4), ConcreteType(5,6,7,8))
+        @test unpack(buf, PackedNestedType, endian) == x
+    end
+
+    # Test mixed Packed/Default nested types across endianness
+    for endian in [:BigEndian, :LittleEndian]
+        # Helper function to write a value, then write zeros afterward to build
+        # a stream that mocks up a `Default` packing strategy memory layout
+        function write_skip(buf, x, field_idx)
+            n_written = write(buf, fix_endian(x, endian))
+
+            n_size = Int32(StructIO.fieldsize(ConcreteType, field_idx))
+            write(buf, zeros(UInt8, n_size - n_written))
+        end
+
+        buf = IOBuffer()
+        write_skip(buf, UInt32(1), 1)
+        write_skip(buf, UInt16(2), 2)
+        write_skip(buf, UInt128(3), 3)
+        write_skip(buf, UInt8(4), 4)
+
+        write_skip(buf, UInt32(5), 1)
+        write_skip(buf, UInt16(6), 2)
+        write_skip(buf, UInt128(7), 3)
+        write_skip(buf, UInt8(8), 4)
+        seekstart(buf)
+
+        x = DefaultNestedType(ConcreteType(1,2,3,4), ConcreteType(5,6,7,8))
+        @test unpack(buf, DefaultNestedType, endian) == x
+    end
+end
+
+@testset "pack()" begin
+    # Pack a simple object
+    buf = IOBuffer()
+    tu = TwoUInts(2, 3)
+    pack(buf, tu)
+
+    # Test that the stream looks reasonable
+    @test position(buf) == Core.sizeof(TwoUInts)
+    seekstart(buf)
+    @test read(buf, UInt) == 2
+    @test read(buf, UInt) == 3
+
+    # Test that we can unpack a packed stream
+    buf = IOBuffer()
+    pack(buf, tu)
+    seekstart(buf)
+    @test unpack(buf, TwoUInts) == TwoUInts(2, 3)
+
+    # Test packed/default nested types across endianness
+    for NT in [PackedNestedType, DefaultNestedType]
+        for endian in [:LittleEndian, :BigEndian]
+            buf = IOBuffer()
+            nt = NT(ConcreteType(1,2,3,4), ConcreteType(5,6,7,8))
+            pack(buf, nt)
+            seekstart(buf)
+            @test unpack(buf, NT) == nt
+        end
+    end
 end

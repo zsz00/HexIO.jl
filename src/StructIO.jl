@@ -1,7 +1,7 @@
 __precompile__()
 module StructIO
 
-using Base: @pure, bswap
+using Base: @pure
 using Base.Meta
 using Compat
 export @io, unpack, pack, fix_endian
@@ -19,17 +19,21 @@ Returns `true` if the given endianness does not match the current host system.
     end
 end
 
-# Extend bswap() for pointers to arbitrarily large objects
-@pure function bswap(ptr::Ptr{UInt8}, sz)
+"""
+    bswap!(ptr::Ptr{UInt8}, sz)
+
+Byte-swap a chunk of data in-place
+"""
+function bswap!(ptr::Ptr{UInt8}, sz)
     # Count from outside edge to middle
-    for i = 0:div(sz,2)
+    for i = 0:div(sz-1,2)
         # Swap two mirrored bytes
-        ptr_hi = ptr + 8*(sz-i)
-        ptr_lo = ptr + 8*i
+        ptr_hi = ptr + sz - i - 1
+        ptr_lo = ptr + i
         val_hi = unsafe_load(ptr_hi)
         val_lo = unsafe_load(ptr_lo)
-        unsafe_store(ptr_hi, val_lo)
-        unsafe_store(ptr_lo, val_hi)
+        unsafe_store!(ptr_hi, val_lo)
+        unsafe_store!(ptr_lo, val_hi)
     end
 end
 
@@ -62,10 +66,6 @@ function packing_strategy(x)
 end
 
 # Sizeof computation
-@pure function round_up(offset, alignment)
-    return offset + mod(alignment - mod(offset, alignment), alignment)
-end
-
 @pure function sizeof(T::DataType, ::Type{Default})
     return Core.sizeof(T)
 end
@@ -80,6 +80,28 @@ end
         return sizeof(T, Default)
     else
         return sizeof(T, packing_strategy(T))
+    end
+end
+
+"""
+    fieldsize(T::DataType, field_idx)
+
+Return the size (in bytes) of a field within `T` in memory
+"""
+@pure function fieldsize(T::DataType, field_idx)
+    @assert nfields(T) != 0 && isbits(T)
+    @assert field_idx <= nfields(T)
+
+    # We figure out the (padded) size of the given field by looking at the
+    # offset of the next field (if it exists) or just the overall size of the
+    # parent
+    offset = fieldoffset(T, field_idx)
+    if field_idx == nfields(T)
+        # If there are no further fields, use the total size of the object
+        return Core.sizeof(T) - offset
+    else
+        # If there are fields, diff this one with the next
+        return fieldoffset(T, field_idx + 1) - offset
     end
 end
 
@@ -128,60 +150,96 @@ packed structs recurse until bitstypes objects are eventually reached, at which
 point `Default` packing is the only behavior.
 """
 function unsafe_unpack(io, T, target, endianness, ::Type{Default})
-    if nfields(T) == 0
-        # If this is a primitive data type, unpack it directly
-        sz = Core.sizeof(T)
-        unsafe_read(io, target, sz)
-        if needs_bswap(endianness)
-            # Special case small sizes, LLVM should turn this into a jump table
-            if sz == 1
-            elseif sz == 2
-                ptr = Base.unsafe_convert(Ptr{UInt16}, target)
-                unsafe_store!(ptr, bswap(unsafe_load(ptr)))
-            elseif sz == 4
-                ptr = Base.unsafe_convert(Ptr{UInt32}, target)
-                unsafe_store!(ptr, bswap(unsafe_load(ptr)))
-            elseif sz == 8
-                ptr = Base.unsafe_convert(Ptr{UInt64}, target)
-                unsafe_store!(ptr, bswap(unsafe_load(ptr)))
-            else
-                for i = 0:div(sz,2)
-                    ptrhi = Base.unsafe_convert(Ptr{UInt8}, target) + 8*(sz-i)
-                    ptrlo = Base.unsafe_convert(Ptr{UInt8}, target) + 8*i
-                    hi = unsafe_load(ptrhi)
-                    lo = unsafe_load(ptrlo)
-                    unsafe_store(ptrhi, lo)
-                    unsafe_store(ptrlo, hi)
-                end
-            end
-        end
-    elseif !needs_bswap(endianness)
+    sz = Core.sizeof(T)
+
+    if !needs_bswap(endianness)
         # If we don't need to bswap, just read directly into `target`
-        sz = Core.sizeof(T)
         unsafe_read(io, target, sz)
+    elseif nfields(T) == 0
+        # If this is a primitive data type, unpack it directly and bswap()
+        unsafe_read(io, target, sz)
+
+        # Special case small sizes, LLVM should turn this into a jump table
+        if sz == 1
+        elseif sz == 2
+            ptr = Base.unsafe_convert(Ptr{UInt16}, target)
+            unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+        elseif sz == 4
+            ptr = Base.unsafe_convert(Ptr{UInt32}, target)
+            unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+        elseif sz == 8
+            ptr = Base.unsafe_convert(Ptr{UInt64}, target)
+            unsafe_store!(ptr, bswap(unsafe_load(ptr)))
+        else
+            # Otherwise, for large primitive objects, fall back to our
+            # `bswap!()` method which will swap in-place
+            bswap!(Base.unsafe_convert(Ptr{UInt8}, target), sz)
+        end
     else
         # If we need to bswap, but it's not a primitive type, recurse!
-        reached = 0
         target_ptr = Base.unsafe_convert(Ptr{Void}, target)
         for i = 1:nfields(T)
             # Unpack this field into `target` at the appropriate offset
             fT = fieldtype(T, i)
-            foffs = fieldoffset(T, i)
-            skip(io, reached - foffs)
-            unsafe_unpack(io, fT, target_ptr + foffs, endianness, Default)
-            reached = foffs + Core.sizeof(fT)
+            target_i = target_ptr + fieldoffset(T, i)
+
+            # Unpack from this point in the IOStream into this field
+            unsafe_unpack(io, fT, target_i, endianness, Default)
+
+            # If bytes_read != Core.sizeof(fT), move it on forward
+            skip(io, fieldsize(T, i) - Core.sizeof(fT))
         end
     end
 end
 
 """
-    unsafe_unpack(io, T, target, endianness, ::Type{Packed})
+    unsafe_pack(io, source, endianness, ::Type{Packed/Default})
 
-Unpack an object of type `T` from `io` into `target`, byte-swapping if
-`endianness` dictates we should, assuming a `Packed` packing strategy.
+Pack `source` into `io`, byte-swapping if `endianness` dictates we should.  The
+last argument is a packing strategy, used to determine the layout of the data in
+memory.  All `Packed` objects recurse until bitstypes objects are eventually
+reached, at which point `Default` packing is identical to `Packed` behavior.
 """
+function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Default}) where T
+    sz = sizeof(T)
+    if !needs_bswap(endianness)
+        # If we don't need to bswap, just write directly from `source`
+        unsafe_write(io, source, sz)
+    elseif nfields(T) == 0
+        # Hopefully, LLVM turns this into a jump list for us
+        if sz == 1
+            unsafe_write(io, source[])
+        elseif sz == 2
+            ptr = Base.unsafe_convert(Ptr{UInt16}, source)
+            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+        elseif sz == 4
+            ptr = Base.unsafe_convert(Ptr{UInt32}, source)
+            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+        elseif sz == 8
+            ptr = Base.unsafe_convert(Ptr{UInt64}, source)
+            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+        else
+            # If we must bswap something of unknown size, copy first so as
+            # to not clobber `source`, then bswap, then write
+            ptr = Base.unsafe_convert(Ptr{UInt8}, copy(source))
+            bswap!(ptr, sz)
+            unsafe_write(io, ptr, sz)
+        end
+        @show position(io), T, sz
+    else
+        # If we need to bswap, but it's not a primitive type, recurse!
+        for i = 1:nfields(T)
+            # Pack field `i` into `io`
+            f = getfield(source, fieldname(source, i))
+            unsafe_pack(io, f, endianness, Default)
+        end
+    end
+end
+
+# `Packed` packing strategy override for `unsafe_unpack`
 function unsafe_unpack(io, T, target, endianness, ::Type{Packed})
-    # If this type cannot be subdivided, unpack directly
+    # If this type cannot be subdivided, packing strategy means nothing, so
+    # hand it off to the `Default` packing strategy method
     if nfields(T) == 0
         return unsafe_unpack(io, T, target, endianness, Default)
     end
@@ -196,14 +254,31 @@ function unsafe_unpack(io, T, target, endianness, ::Type{Packed})
     end
 end
 
+# `Packed` packing strategy override for `unsafe_pack`
+function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Packed}) where T
+    # If this type cannot be subdivided, packing strategy means nothing, so
+    # hand it off to the `Default` packing strategy method
+    if nfields(T) == 0
+        return unsafe_pack(io, source, endianness, Default)
+    end
+
+    # Otherwise, iterate over the fields, packing each into `io`
+    for i = 1:nfields(T)
+        # Unpack this field into `target` at the appropriate offset
+        fT = fieldtype(T, i)
+        f = Ref{fT}(getfield(source[], fieldname(T, i)))
+        unsafe_pack(io, f, endianness, Packed)
+    end
+end
+
 """
     unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
 
 Given an input `io`, unpack type `T`, byte-swapping according to the given
 `endianness` of `io`. If `endianness` is `:NativeEndian` (the default), no
 byteswapping will occur.  If `endianness` is `:LittleEndian` or `:BigEndian`,
-byteswapping will occur of the endianness of the currently running host does
-not match the endianness of `io`.
+byteswapping will occur of the endianness if the host system does not match
+the endianness of `io`.
 """
 function unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
     # Create a `Ref{}` pointing to type T, we'll unpack into that
@@ -213,6 +288,22 @@ function unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
 
     # De-reference `r` and return its unpacked contents
     return r[]
+end
+
+"""
+    pack(io::IO, source, endianness::Symbol = :NativeEndian)
+
+Given an input `source`, pack it into `io`, byte-swapping according to the
+given `endianness` of `io`. If `endianness` is `:NativeEndian` (the default),
+no byteswapping will occur.  If `endianness` is `:LittleEndian` or
+`:BigEndian`, byteswapping will occur if the endianness of the host system
+does not match the endianness of `io`.
+"""
+function pack(io::IO, source::T, endianness::Symbol = :NativeEndian) where T
+    r = Ref{T}(source)
+    packstrat = nfields(T) == 0 ? Default : packing_strategy(T)
+    unsafe_pack(io, r, endianness, packstrat)
+    return nothing
 end
 
 end # module
