@@ -4,7 +4,7 @@ module StructIO
 using Base: @pure
 using Base.Meta
 using Compat
-export @io, unpack, pack, fix_endian
+export @io, unpack, pack, fix_endian, packed_size
 
 """
     needs_bswap(endianness::Symbol)
@@ -66,20 +66,20 @@ function packing_strategy(x)
 end
 
 # Sizeof computation
-@pure function sizeof(T::DataType, ::Type{Default})
+@pure function packed_size(T::DataType, ::Type{Default})
     return Core.sizeof(T)
 end
 
-@pure function sizeof(T::DataType, ::Type{Packed})
+@pure function packed_size(T::DataType, ::Type{Packed})
     @assert nfields(T) != 0 && isbits(T)
-    return sum(sizeof, T.types)
+    return sum(packed_size, T.types)
 end
 
-@pure function sizeof(T::DataType)
+@pure function packed_size(T::DataType)
     if nfields(T) == 0
-        return sizeof(T, Default)
+        return packed_size(T, Default)
     else
-        return sizeof(T, packing_strategy(T))
+        return packed_size(T, packing_strategy(T))
     end
 end
 
@@ -111,7 +111,7 @@ end
         ...
     end
 
-Generates `packing_strategy()` and `sizeof()` methods for the type being
+Generates `packing_strategy()` and `packed_size()` methods for the type being
 defined within the given type definition.  This enables usage of the `unpack`
 method.
 """
@@ -136,8 +136,6 @@ macro io(typ, annotations...)
     ret = Expr(:toplevel, typ)
     strat = (alignment == :align_default ? StructIO.Default : StructIO.Packed)
     push!(ret.args, :(StructIO.packing_strategy(::Type{$T}) = $strat))
-    push!(ret.args, :(Base.sizeof(::Type{$T}) = StructIO.sizeof($T)))
-    push!(ret.args, :(Base.sizeof(::$T) = StructIO.sizeof($T)))
     return esc(ret)
 end
 
@@ -201,7 +199,7 @@ memory.  All `Packed` objects recurse until bitstypes objects are eventually
 reached, at which point `Default` packing is identical to `Packed` behavior.
 """
 function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Default}) where T
-    sz = sizeof(T)
+    sz = packed_size(T)
     if !needs_bswap(endianness)
         # If we don't need to bswap, just write directly from `source`
         unsafe_write(io, source, sz)
