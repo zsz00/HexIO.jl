@@ -198,7 +198,7 @@ last argument is a packing strategy, used to determine the layout of the data
 in memory.  All `Packed` objects recurse until bitstypes objects are eventually
 reached, at which point `Default` packing is identical to `Packed` behavior.
 """
-function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Default}) where T
+function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Default})
     sz = packed_size(T)
     if !needs_bswap(endianness)
         # If we don't need to bswap, just write directly from `source`
@@ -253,7 +253,7 @@ function unsafe_unpack(io, T, target, endianness, ::Type{Packed})
 end
 
 # `Packed` packing strategy override for `unsafe_pack`
-function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Packed}) where T
+function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Packed})
     # If this type cannot be subdivided, packing strategy means nothing, so
     # hand it off to the `Default` packing strategy method
     if nfields(T) == 0
@@ -297,7 +297,7 @@ no byteswapping will occur.  If `endianness` is `:LittleEndian` or
 `:BigEndian`, byteswapping will occur if the endianness of the host system
 does not match the endianness of `io`.
 """
-function pack(io::IO, source::T, endianness::Symbol = :NativeEndian) where T
+function pack{T}(io::IO, source::T, endianness::Symbol = :NativeEndian)
     r = Ref{T}(source)
     packstrat = nfields(T) == 0 ? Default : packing_strategy(T)
     unsafe_pack(io, r, endianness, packstrat)
