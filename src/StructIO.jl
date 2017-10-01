@@ -194,8 +194,8 @@ end
     unsafe_pack(io, source, endianness, ::Type{Packed/Default})
 
 Pack `source` into `io`, byte-swapping if `endianness` dictates we should.  The
-last argument is a packing strategy, used to determine the layout of the data in
-memory.  All `Packed` objects recurse until bitstypes objects are eventually
+last argument is a packing strategy, used to determine the layout of the data
+in memory.  All `Packed` objects recurse until bitstypes objects are eventually
 reached, at which point `Default` packing is identical to `Packed` behavior.
 """
 function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Default}) where T
