@@ -133,7 +133,7 @@ macro io(typ, annotations...)
         T = T.args[1]
     end
 
-    ret = Expr(:toplevel, typ)
+    ret = Expr(:toplevel, :(Base.@__doc__ $(typ)))
     strat = (alignment == :align_default ? StructIO.Default : StructIO.Packed)
     push!(ret.args, :(StructIO.packing_strategy(::Type{$T}) = $strat))
     return esc(ret)

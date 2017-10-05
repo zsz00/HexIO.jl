@@ -27,6 +27,10 @@ end align_packed
     B::ConcreteType
 end
 
+# Also test documenting a type
+"""
+This is a docstring
+"""
 @io immutable ParametricType{S,T}
     A::S
     B::T
@@ -126,4 +130,8 @@ end
             @test unpack(buf, NT) == nt
         end
     end
+end
+
+@testset "Documentation" begin
+    @test string(@doc ParametricType) == "This is a docstring\n"
 end
