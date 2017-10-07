@@ -27,6 +27,11 @@ end align_packed
     B::ConcreteType
 end
 
+@io immutable PackedParametricType{T}
+    x::T
+    y::T
+end align_packed
+
 # Also test documenting a type
 """
 This is a docstring
@@ -130,6 +135,16 @@ end
             @test unpack(buf, NT) == nt
         end
     end
+end
+
+@testset "packed_sizeof()" begin
+    @test packed_sizeof(TwoUInts) == 2*sizeof(UInt)
+    @test packed_sizeof(ConcreteType) == 1 + 2 + 4 + 16
+    @test packed_sizeof(PackedNestedType) == 2*packed_sizeof(ConcreteType)
+    @test packed_sizeof(PackedParametricType{UInt8}) == 2
+    @test packed_sizeof(PackedParametricType{UInt32}) == 8
+    const psCT = packed_sizeof(ConcreteType)
+    @test packed_sizeof(PackedParametricType{ConcreteType}) == 2*psCT
 end
 
 @testset "Documentation" begin

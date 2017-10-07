@@ -4,7 +4,7 @@ module StructIO
 using Base: @pure
 using Base.Meta
 using Compat
-export @io, unpack, pack, fix_endian, packed_size
+export @io, unpack, pack, fix_endian, packed_sizeof
 
 """
     needs_bswap(endianness::Symbol)
@@ -66,20 +66,20 @@ function packing_strategy(x)
 end
 
 # Sizeof computation
-@pure function packed_size(T::DataType, ::Type{Default})
+@pure function packed_sizeof(T::DataType, ::Type{Default})
     return Core.sizeof(T)
 end
 
-@pure function packed_size(T::DataType, ::Type{Packed})
+@pure function packed_sizeof(T::DataType, ::Type{Packed})
     @assert nfields(T) != 0 && isbits(T)
-    return sum(packed_size, T.types)
+    return sum(packed_sizeof, T.types)
 end
 
-@pure function packed_size(T::DataType)
+@pure function packed_sizeof(T::DataType)
     if nfields(T) == 0
-        return packed_size(T, Default)
+        return packed_sizeof(T, Default)
     else
-        return packed_size(T, packing_strategy(T))
+        return packed_sizeof(T, packing_strategy(T))
     end
 end
 
@@ -111,7 +111,7 @@ end
         ...
     end
 
-Generates `packing_strategy()` and `packed_size()` methods for the type being
+Generates `packing_strategy()` and `packed_sizeof()` methods for the type being
 defined within the given type definition.  This enables usage of the `unpack`
 method.
 """
@@ -126,16 +126,16 @@ macro io(typ, annotations...)
     
     # Get typename, collapsing type expressions until we get the actual type
     T = typ.args[2]
-    if isexpr(T,:(<:))
+    if isexpr(T, :(<:))
         T = T.args[1]
     end
-    if isexpr(T,:curly)
+    if isexpr(T, :curly)
         T = T.args[1]
     end
 
     ret = Expr(:toplevel, :(Base.@__doc__ $(typ)))
     strat = (alignment == :align_default ? StructIO.Default : StructIO.Packed)
-    push!(ret.args, :(StructIO.packing_strategy(::Type{$T}) = $strat))
+    push!(ret.args, :(StructIO.packing_strategy(::Type{T}) where {T <: $T} = $strat))
     return esc(ret)
 end
 
@@ -199,7 +199,7 @@ in memory.  All `Packed` objects recurse until bitstypes objects are eventually
 reached, at which point `Default` packing is identical to `Packed` behavior.
 """
 function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Default})
-    sz = packed_size(T)
+    sz = packed_sizeof(T)
     if !needs_bswap(endianness)
         # If we don't need to bswap, just write directly from `source`
         unsafe_write(io, source, sz)
