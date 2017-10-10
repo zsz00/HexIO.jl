@@ -3,7 +3,7 @@
 [![StructIO](http://pkg.julialang.org/badges/StructIO_0.5.svg)](http://pkg.julialang.org/?pkg=StructIO)
 [![Build Status](https://travis-ci.org/Keno/StructIO.jl.svg?branch=master)](https://travis-ci.org/Keno/StructIO.jl)
 
-Generates IO methods (`sizeof`, `pack`, `unpack`) from structure definitions.
+Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
 
 # Example usage
 ```julia
