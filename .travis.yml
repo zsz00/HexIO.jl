@@ -7,7 +7,7 @@ julia:
   - nightly
 notifications:
   email: false
-# uncomment the following lines to override the default test script
-#script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("StructIO"); Pkg.test("StructIO"; coverage=true)'
+
+# push coverage results to Codecov
+after_success:
+  - julia -e 'cd(Pkg.dir("StructIO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
