@@ -108,13 +108,28 @@ end
 end
 
 @testset "pack()" begin
+    # Pack simple types
+    buf = IOBuffer()
+    pack(buf, UInt8(1))
+    pack(buf, Int16(2))
+    pack(buf, UInt32(4))
+    pack(buf, Int64(8))
+    pack(buf, UInt128(16))
+    @test position(buf) == 1 + 2 + 4 + 8 + 16
+    seekstart(buf)
+    @test read(buf, UInt8) === UInt8(1)
+    @test read(buf, Int16) === Int16(2)
+    @test read(buf, UInt32) === UInt32(4)
+    @test read(buf, Int64) === Int64(8)
+    @test read(buf, UInt128) === UInt128(16)
+
     # Pack a simple object
     buf = IOBuffer()
     tu = TwoUInts(2, 3)
     pack(buf, tu)
 
     # Test that the stream looks reasonable
-    @test position(buf) == Core.sizeof(TwoUInts)
+    @test position(buf) == sizeof(TwoUInts)
     seekstart(buf)
     @test read(buf, UInt) == 2
     @test read(buf, UInt) == 3
