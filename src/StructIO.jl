@@ -52,8 +52,8 @@ end
 
 # Alignment traits
 @compat abstract type PackingStrategy end
-immutable Packed <: PackingStrategy; end
-immutable Default <: PackingStrategy; end
+struct Packed <: PackingStrategy; end
+struct Default <: PackingStrategy; end
 
 """
     packing_strategy(x)

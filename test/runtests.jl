@@ -4,30 +4,30 @@ using Base.Test
 
 # First, exercise the `@io` macro a bit, to ensure it can handle different
 # kinds of type declarations
-@io immutable TwoUInts
+@io struct TwoUInts
     x::UInt
     y::UInt
 end
 
 @compat abstract type AbstractType end
-@io immutable ConcreteType <: AbstractType
+@io struct ConcreteType <: AbstractType
     A::UInt32
     B::UInt16
     C::UInt128
     D::UInt8
 end align_packed
 
-@io immutable PackedNestedType
+@io struct PackedNestedType
     A::ConcreteType
     B::ConcreteType
 end align_packed
 
-@io immutable DefaultNestedType
+@io struct DefaultNestedType
     A::ConcreteType
     B::ConcreteType
 end
 
-@io immutable PackedParametricType{T}
+@io struct PackedParametricType{T}
     x::T
     y::T
 end align_packed
@@ -36,7 +36,7 @@ end align_packed
 """
 This is a docstring
 """
-@io immutable ParametricType{S,T}
+@io struct ParametricType{S,T}
     A::S
     B::T
     C::T
