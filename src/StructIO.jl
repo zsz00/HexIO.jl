@@ -71,12 +71,12 @@ end
 end
 
 @pure function packed_sizeof(T::DataType, ::Type{Packed})
-    @assert nfields(T) != 0 && isbits(T)
+    @assert @compat fieldcount(T) != 0 && isbits(T)
     return sum(packed_sizeof, T.types)
 end
 
 @pure function packed_sizeof(T::DataType)
-    if nfields(T) == 0
+    if @compat fieldcount(T) == 0
         return packed_sizeof(T, Default)
     else
         return packed_sizeof(T, packing_strategy(T))
@@ -89,14 +89,14 @@ end
 Return the size (in bytes) of a field within `T` in memory
 """
 @pure function fieldsize(T::DataType, field_idx)
-    @assert nfields(T) != 0 && isbits(T)
-    @assert field_idx <= nfields(T)
+    @assert @compat fieldcount(T) != 0 && isbits(T)
+    @assert field_idx <= @compat fieldcount(T)
 
     # We figure out the (padded) size of the given field by looking at the
     # offset of the next field (if it exists) or just the overall size of the
     # parent
     offset = fieldoffset(T, field_idx)
-    if field_idx == nfields(T)
+    if field_idx == @compat fieldcount(T)
         # If there are no further fields, use the total size of the object
         return Core.sizeof(T) - offset
     else
@@ -153,7 +153,7 @@ function unsafe_unpack(io, T, target, endianness, ::Type{Default})
     if !needs_bswap(endianness)
         # If we don't need to bswap, just read directly into `target`
         unsafe_read(io, target, sz)
-    elseif nfields(T) == 0
+    elseif @compat fieldcount(T) == 0
         # If this is a primitive data type, unpack it directly and bswap()
         unsafe_read(io, target, sz)
 
@@ -176,7 +176,7 @@ function unsafe_unpack(io, T, target, endianness, ::Type{Default})
     else
         # If we need to bswap, but it's not a primitive type, recurse!
         target_ptr = Base.unsafe_convert(Ptr{Void}, target)
-        for i = 1:nfields(T)
+        for i = 1:@compat fieldcount(T)
             # Unpack this field into `target` at the appropriate offset
             fT = fieldtype(T, i)
             target_i = target_ptr + fieldoffset(T, i)
@@ -203,7 +203,7 @@ function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Default})
     if !needs_bswap(endianness)
         # If we don't need to bswap, just write directly from `source`
         unsafe_write(io, source, sz)
-    elseif nfields(T) == 0
+    elseif @compat fieldcount(T) == 0
         # Hopefully, LLVM turns this into a jump list for us
         if sz == 1
             unsafe_write(io, source[])
@@ -226,7 +226,7 @@ function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Default})
         @show position(io), T, sz
     else
         # If we need to bswap, but it's not a primitive type, recurse!
-        for i = 1:nfields(T)
+        for i = 1:@compat fieldcount(T)
             # Pack field `i` into `io`
             f = getfield(source, fieldname(source, i))
             unsafe_pack(io, f, endianness, Default)
@@ -238,13 +238,13 @@ end
 function unsafe_unpack(io, T, target, endianness, ::Type{Packed})
     # If this type cannot be subdivided, packing strategy means nothing, so
     # hand it off to the `Default` packing strategy method
-    if nfields(T) == 0
+    if @compat fieldcount(T) == 0
         return unsafe_unpack(io, T, target, endianness, Default)
     end
 
     # Otherwise, iterate over the fields, unpacking each into `target`
     target_ptr = Base.unsafe_convert(Ptr{Void}, target)
-    for i = 1:nfields(T)
+    for i = 1:@compat fieldcount(T)
         # Unpack this field into `target` at the appropriate offset
         fT = fieldtype(T, i)
         target_i = target_ptr + fieldoffset(T, i)
@@ -256,12 +256,12 @@ end
 function unsafe_pack{T}(io, source::Ref{T}, endianness, ::Type{Packed})
     # If this type cannot be subdivided, packing strategy means nothing, so
     # hand it off to the `Default` packing strategy method
-    if nfields(T) == 0
+    if @compat fieldcount(T) == 0
         return unsafe_pack(io, source, endianness, Default)
     end
 
     # Otherwise, iterate over the fields, packing each into `io`
-    for i = 1:nfields(T)
+    for i = 1:@compat fieldcount(T)
         # Unpack this field into `target` at the appropriate offset
         fT = fieldtype(T, i)
         f = Ref{fT}(getfield(source[], fieldname(T, i)))
@@ -281,7 +281,7 @@ the endianness of `io`.
 function unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
     # Create a `Ref{}` pointing to type T, we'll unpack into that
     r = Ref{T}()
-    packstrat = nfields(T) == 0 ? Default : packing_strategy(T)
+    packstrat = @compat fieldcount(T) == 0 ? Default : packing_strategy(T)
     unsafe_unpack(io, T, r, endianness, packstrat)
 
     # De-reference `r` and return its unpacked contents
@@ -299,7 +299,7 @@ does not match the endianness of `io`.
 """
 function pack{T}(io::IO, source::T, endianness::Symbol = :NativeEndian)
     r = Ref{T}(source)
-    packstrat = nfields(T) == 0 ? Default : packing_strategy(T)
+    packstrat = @compat fieldcount(T) == 0 ? Default : packing_strategy(T)
     unsafe_pack(io, r, endianness, packstrat)
     return nothing
 end
