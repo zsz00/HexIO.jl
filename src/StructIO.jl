@@ -147,7 +147,7 @@ Unpack an object of type `T` from `io` into `target`, byte-swapping if
 packed structs recurse until bitstypes objects are eventually reached, at which
 point `Default` packing is the only behavior.
 """
-function unsafe_unpack(io, T, target, endianness, ::Type{Default})
+function unsafe_unpack(io, ::Type{T}, target, endianness, ::Type{Default}) where {T}
     sz = Core.sizeof(T)
 
     if !needs_bswap(endianness)
@@ -160,18 +160,19 @@ function unsafe_unpack(io, T, target, endianness, ::Type{Default})
         # Special case small sizes, LLVM should turn this into a jump table
         if sz == 1
         elseif sz == 2
-            ptr = Base.unsafe_convert(Ptr{UInt16}, target)
+            ptr = Base.unsafe_convert(Ptr{T}, target)
             unsafe_store!(ptr, bswap(unsafe_load(ptr)))
         elseif sz == 4
-            ptr = Base.unsafe_convert(Ptr{UInt32}, target)
+            ptr = Base.unsafe_convert(Ptr{T}, target)
             unsafe_store!(ptr, bswap(unsafe_load(ptr)))
         elseif sz == 8
-            ptr = Base.unsafe_convert(Ptr{UInt64}, target)
+            ptr = Base.unsafe_convert(Ptr{T}, target)
             unsafe_store!(ptr, bswap(unsafe_load(ptr)))
         else
             # Otherwise, for large primitive objects, fall back to our
             # `bswap!()` method which will swap in-place
-            bswap!(Base.unsafe_convert(Ptr{UInt8}, target), sz)
+            void_ptr = Base.unsafe_convert(Ptr{Void}, target)
+            bswap!(Base.unsafe_convert(Ptr{UInt8}, void_ptr), sz)
         end
     else
         # If we need to bswap, but it's not a primitive type, recurse!
@@ -206,24 +207,24 @@ function unsafe_pack(io, source::Ref{T}, endianness, ::Type{Default}) where {T}
     elseif @compat fieldcount(T) == 0
         # Hopefully, LLVM turns this into a jump list for us
         if sz == 1
-            unsafe_write(io, source[])
+            write(io, source[])
         elseif sz == 2
-            ptr = Base.unsafe_convert(Ptr{UInt16}, source)
-            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+            ptr = Base.unsafe_convert(Ptr{T}, source)
+            write(io, bswap(unsafe_load(ptr)))
         elseif sz == 4
-            ptr = Base.unsafe_convert(Ptr{UInt32}, source)
-            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+            ptr = Base.unsafe_convert(Ptr{T}, source)
+            write(io, bswap(unsafe_load(ptr)))
         elseif sz == 8
-            ptr = Base.unsafe_convert(Ptr{UInt64}, source)
-            unsafe_write(io, bswap(unsafe_load(ptr)), sz)
+            ptr = Base.unsafe_convert(Ptr{T}, source)
+            write(io, bswap(unsafe_load(ptr)))
         else
             # If we must bswap something of unknown size, copy first so as
             # to not clobber `source`, then bswap, then write
-            ptr = Base.unsafe_convert(Ptr{UInt8}, copy(source))
+            void_ptr = Base.unsafe_convert(Ptr{Void}, Ref{T}(copy(source[])))
+            ptr = Base.unsafe_convert(Ptr{UInt8}, void_ptr)
             bswap!(ptr, sz)
             unsafe_write(io, ptr, sz)
         end
-        @show position(io), T, sz
     else
         # If we need to bswap, but it's not a primitive type, recurse!
         for i = 1:@compat fieldcount(T)

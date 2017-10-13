@@ -109,19 +109,21 @@ end
 
 @testset "pack()" begin
     # Pack simple types
-    buf = IOBuffer()
-    pack(buf, UInt8(1))
-    pack(buf, Int16(2))
-    pack(buf, UInt32(4))
-    pack(buf, Int64(8))
-    pack(buf, UInt128(16))
-    @test position(buf) == 1 + 2 + 4 + 8 + 16
-    seekstart(buf)
-    @test read(buf, UInt8) === UInt8(1)
-    @test read(buf, Int16) === Int16(2)
-    @test read(buf, UInt32) === UInt32(4)
-    @test read(buf, Int64) === Int64(8)
-    @test read(buf, UInt128) === UInt128(16)
+    for endian in [:BigEndian, :LittleEndian]
+        buf = IOBuffer()
+        pack(buf, UInt8(1), endian)
+        pack(buf, Int16(2), endian)
+        pack(buf, UInt32(4), endian)
+        pack(buf, Int64(8), endian)
+        pack(buf, UInt128(16), endian)
+        @test position(buf) == 1 + 2 + 4 + 8 + 16
+        seekstart(buf)
+        @test unpack(buf, UInt8, endian) === UInt8(1)
+        @test unpack(buf, Int16, endian) === Int16(2)
+        @test unpack(buf, UInt32, endian) === UInt32(4)
+        @test unpack(buf, Int64, endian) === Int64(8)
+        @test unpack(buf, UInt128, endian) === UInt128(16)
+    end
 
     # Pack a simple object
     buf = IOBuffer()
