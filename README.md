@@ -1,6 +1,6 @@
 # StructIO
 
-[![StructIO](http://pkg.julialang.org/badges/StructIO_0.6.svg)](http://pkg.julialang.org/?pkg=StructIO)
+[![StructIO](http://pkg.julialang.org/badges/StructIO_0.7.svg)](http://pkg.julialang.org/?pkg=StructIO)
 [![Build Status](https://travis-ci.org/Keno/StructIO.jl.svg?branch=master)](https://travis-ci.org/Keno/StructIO.jl)
 [![Coverage](http://codecov.io/github/Keno/StructIO.jl/coverage.svg?branch=master)](http://codecov.io/github/Keno/StructIO.jl?branch=master)
 
