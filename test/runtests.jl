@@ -1,6 +1,5 @@
 using StructIO
-using Compat
-using Base.Test
+using Test
 
 # First, exercise the `@io` macro a bit, to ensure it can handle different
 # kinds of type declarations
@@ -9,7 +8,7 @@ using Base.Test
     y::UInt
 end
 
-@compat abstract type AbstractType end
+abstract type AbstractType end
 @io struct ConcreteType <: AbstractType
     A::UInt32
     B::UInt16
@@ -160,7 +159,7 @@ end
     @test packed_sizeof(PackedNestedType) == 2*packed_sizeof(ConcreteType)
     @test packed_sizeof(PackedParametricType{UInt8}) == 2
     @test packed_sizeof(PackedParametricType{UInt32}) == 8
-    const psCT = packed_sizeof(ConcreteType)
+    psCT = packed_sizeof(ConcreteType)
     @test packed_sizeof(PackedParametricType{ConcreteType}) == 2*psCT
 end
 
