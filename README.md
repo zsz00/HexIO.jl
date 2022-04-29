@@ -2,8 +2,8 @@
 
 [![HexIO](http://pkg.julialang.org/badges/HexIO_0.6.svg)](http://pkg.julialang.org/?pkg=HexIO)
 [![HexIO](http://pkg.julialang.org/badges/HexIO_0.7.svg)](http://pkg.julialang.org/?pkg=HexIO)
-[![Build Status](https://travis-ci.org/Keno/HexIO.jl.svg?branch=master)](https://travis-ci.org/Keno/HexIO.jl)
-[![Coverage](http://codecov.io/github/Keno/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/Keno/HexIO.jl?branch=master)
+[![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
+[![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
 Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
 
@@ -26,8 +26,6 @@ TwoUInt64s(0x0102030405060708, 0x090a0b0c0d0e0f10)
 
 io = open("", "rb")
 buffer = read(io, read_size)
-
-T 可以是struct,也可以是单个类型,如Int32
 
 ```
 
@@ -76,23 +74,18 @@ Dump 16 bytes beginning at offset 0x04
 ```julia
 hex = Hex("test.bin")
 dump!(hex, 0x04, 16)
-```
-```
-00000004 | 66 6F 6F 62 61 72 FF FF   FF 00 7F E1 90 E6 67 83 |foobar........g.
-```
 
-```julia
-hex = Hex("test.bin")
+00000004 | 66 6F 6F 62 61 72 FF FF   FF 00 7F E1 90 E6 67 83 |foobar........g.
+
 dump!(hex.hex, 0x04, 16)
-```
-```
+
 00000004 | 66 6F 6F 62 61 72 FF FF   FF 00 7F E1 90 E6 67 83 |foobar........g.
 ```
 
 
 ### Hexadecimal Editing (Hex String)
 
-Write foobar to test.bin beginning at offset 0x04
+Write foobar to `test.bin` beginning at offset 0x04
 ```julia
 hex = Hex("test.bin")
 edit!(hex, "0x666f6f626172", 0x04)
