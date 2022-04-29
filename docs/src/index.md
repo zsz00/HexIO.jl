@@ -3,9 +3,11 @@
 [![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
 [![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
-## Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
+## unpack and pack
 
-# Example usage
+Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
+
+### Example usage
 ```julia
 julia> using HexIO
 
@@ -28,9 +30,10 @@ buffer = read(io, read_size)
 ```
 
 
-## Hex has same fuctions for editing and displaying data in binary files in hexadecimal format.
+## editing and displaying
 
-### Synopsis
+Hex has same fuctions for editing and displaying data in binary files in hexadecimal format.
+
 
 #### dump!(self::Hex, offset = 0, n::Int = -1)
 Displays binary file data beginning at offset and ending at offset + n.
@@ -42,9 +45,10 @@ Edits targeted binary file by overwriting data beginning at offset.
 - offset defaults to 0
 - datastr can be in ASCII or hexadecimal format (ie. "foobar" or "0x666f6f626172")
 
-### Examples
 
-### Complete File Hexdump
+### Example usage
+
+#### Complete File Hexdump
 
 ```julia
 hex = Hex("test/test.bin")
@@ -65,7 +69,7 @@ dump!(hex, 0x00)
 000000B0 | 83 7D 45 96 44 A8 D9 CF   B2 B8 AD 37 73 0E 15 AD |.}E.D......7s...
 and so on...
 ```
-### Chunk Hexdump
+#### Chunk Hexdump
 
 Dump 16 bytes beginning at offset 0x04
 ```julia
@@ -80,7 +84,7 @@ dump!(hex.hex, 0x04, 16)
 ```
 
 
-### Hexadecimal Editing (Hex String)
+#### Hexadecimal Editing (Hex String)
 
 Write foobar to `test.bin` beginning at offset 0x04
 ```julia
@@ -88,7 +92,7 @@ hex = Hex("test.bin")
 edit!(hex, "0x666f6f626172", 0x04)
 ```
 
-### Hexadecimal Editing (ASCII string)
+#### Hexadecimal Editing (ASCII string)
 
 Write foobar to test.bin beginning at offset 0x04
 ```julia
@@ -96,7 +100,7 @@ hex = Hex("test.bin")
 edit!(hex, "foobar", 0x04)
 ```
 
-### Binary Singature Location
+#### Binary Singature Location
 
 Return offset of the start of the hexadecimal signature "b77e"
 ```julia
