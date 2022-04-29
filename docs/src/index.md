@@ -1,7 +1,5 @@
 # HexIO
 
-[![HexIO](http://pkg.julialang.org/badges/HexIO_0.6.svg)](http://pkg.julialang.org/?pkg=HexIO)
-[![HexIO](http://pkg.julialang.org/badges/HexIO_0.7.svg)](http://pkg.julialang.org/?pkg=HexIO)
 [![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
 [![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
