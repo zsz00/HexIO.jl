@@ -80,7 +80,7 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
     blen = length(buffer)
     llen = 16
     idx  = 1
-    println("-------------------------- $blen, $s._offset")
+    println("-------------------------- $blen, $(s._offset)")
     while idx < blen
         if idx + 16 > blen
             llen = blen - idx + 1
@@ -113,7 +113,7 @@ function dump!(s::Hex, start=nothing, n=nothing)
         if idx + 1024 > n
             read_size = n - idx
         end
-        println("aaaaaaaaaa: $read_size")
+        println("aaaaaaaaaa: $read_size, $(s._offset)")
         buffer = read(s.hex, read_size)
         println("bbbbbbbb: $buffer")
         dump_buffer(s, buffer)
