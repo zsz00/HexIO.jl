@@ -9,11 +9,10 @@ end # type Hex
     Hex(filename::AbstractString)
 
 """
-function Hex(filename::AbstractString)
+function Hex(filename::AbstractString, _offset::Int=0)
     hex        = open(filename, "r+")
     _size  =  filename[1:4]=="\\\\.\\" ? 0 : filesize(filename)
     println("_size:", _size)
-    _offset    = 0x00
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
@@ -21,11 +20,10 @@ end  # constructor Hex
     Hex(io::IO)
 
 """
-function Hex(io::IO)
+function Hex(io::IO, _offset::Int=0)
     hex        = io
     _size  =  stat(io).size
     println("_size:", _size)
-    _offset    = 0x00
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
@@ -87,7 +85,7 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
         if idx + 16 > blen
             llen = blen - idx + 1
         end
-        dump_line(s, buffer[idx:idx + llen - 1])
+        dump_line(s, buffer[idx:(idx + llen - 1)])
         idx = idx + llen
     end
 end # function dump_buffer
@@ -121,7 +119,7 @@ function dump!(s::Hex, start=nothing, n=nothing)
     end
 end # function dump!
 
-dump!(buf::IO, start=nothing, n=nothing) = dump!(Hex(buf), start, n)
+dump!(buf::IO, start=nothing, n=nothing) = dump!(Hex(buf, start), start, n)
 
 
 """
