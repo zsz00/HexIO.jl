@@ -80,11 +80,12 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
     blen = length(buffer)
     llen = 16
     idx  = 1
-    println("--------------------------")
+    println("--------------------------", blen)
     while idx < blen
         if idx + 16 > blen
             llen = blen - idx + 1
         end
+        print("**********", llen, blen)
         dump_line(s, buffer[idx:(idx + llen - 1)])
         idx = idx + llen
     end
