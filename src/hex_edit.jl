@@ -6,7 +6,7 @@ mutable struct Hex
 end # type Hex
 
 """
-    Hex(filename::AbstractString)
+    Hex(filename::AbstractString, _offset::Int=0)
 
 """
 function Hex(filename::AbstractString, _offset::Int=0)
@@ -17,7 +17,7 @@ function Hex(filename::AbstractString, _offset::Int=0)
 end  # constructor Hex
 
 """
-    Hex(io::IO)
+    Hex(io::IO, _offset::Int=0)
 
 """
 function Hex(io::IO, _offset::Int=0)
@@ -35,7 +35,7 @@ displays data in hex format.
 function dump_line(s::Hex, line::Array{UInt8})
     llen = length(line)
     plen = llen % 16
-
+    println("=======", llen)
     print("$(uppercase(string(s._offset, base=16, pad=8))) | ")
     n = 0
     for byte in line
@@ -80,7 +80,7 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
     blen = length(buffer)
     llen = 16
     idx  = 1
-
+    println("--------------------------")
     while idx < blen
         if idx + 16 > blen
             llen = blen - idx + 1
