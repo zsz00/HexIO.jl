@@ -1,4 +1,4 @@
-using StructIO
+using HexIO
 using Test
 
 # First, exercise the `@io` macro a bit, to ensure it can handle different
@@ -85,7 +85,7 @@ end
         function write_skip(buf, x, field_idx)
             n_written = write(buf, fix_endian(x, endian))
 
-            n_size = Int32(StructIO.fieldsize(ConcreteType, field_idx))
+            n_size = Int32(HexIO.fieldsize(ConcreteType, field_idx))
             write(buf, zeros(UInt8, n_size - n_written))
         end
 

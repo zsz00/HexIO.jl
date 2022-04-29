@@ -1,9 +1,12 @@
 __precompile__()
-module StructIO
+module HexIO   # HexIO
 
 using Base: @pure
 using Base.Meta
 export @io, unpack, pack, fix_endian, packed_sizeof
+include("hex_edit.jl")
+export Hex, dump!, edit!, find!
+
 
 """
     needs_bswap(endianness::Symbol)
@@ -133,8 +136,8 @@ macro io(typ, annotations...)
     end
 
     ret = Expr(:toplevel, :(Base.@__doc__ $(typ)))
-    strat = (alignment == :align_default ? StructIO.Default : StructIO.Packed)
-    push!(ret.args, :(StructIO.packing_strategy(::Type{T}) where {T <: $T} = $strat))
+    strat = (alignment == :align_default ? HexIO.Default : HexIO.Packed)
+    push!(ret.args, :(HexIO.packing_strategy(::Type{T}) where {T <: $T} = $strat))
     return esc(ret)
 end
 
@@ -281,7 +284,7 @@ byteswapping will occur.  If `endianness` is `:LittleEndian` or `:BigEndian`,
 byteswapping will occur of the endianness if the host system does not match
 the endianness of `io`.
 """
-function unpack(io::IO, T::Type, endianness::Symbol = :NativeEndian)
+function unpack(io::IO, T::Type, endianness::Symbol=:NativeEndian)
     # Create a `Ref{}` pointing to type T, we'll unpack into that
     r = Ref{T}()
     packstrat = fieldcount(T) == 0 ? Default : packing_strategy(T)

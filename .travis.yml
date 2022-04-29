@@ -9,4 +9,4 @@ notifications:
 
 # push coverage results to Codecov
 after_success:
-  - julia -e 'cd(Pkg.dir("StructIO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'cd(Pkg.dir("HexIO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
