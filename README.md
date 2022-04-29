@@ -1,7 +1,6 @@
 # HexIO
 
-[![HexIO](http://pkg.julialang.org/badges/HexIO_0.6.svg)](http://pkg.julialang.org/?pkg=HexIO)
-[![HexIO](http://pkg.julialang.org/badges/HexIO_0.7.svg)](http://pkg.julialang.org/?pkg=HexIO)
+[![][docs-dev-img]][docs-dev-url]
 [![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
 [![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
@@ -110,5 +109,13 @@ hex = Hex("test.bin")
 offset = find!(hex, "0xb77e")
 ```
 
+## Documentation
+- [**LATEST**][docs-dev-url] &mdash; *in-development version of the documentation.* 
 
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-dev-url]: https://zsz00.github.io/HexIO.jl/dev
 
+## Relevant Pkgs
+- [StructIO.jl](https://github.com/Keno/StructIO.jl) 
+- [HexEdit.jl](https://github.com/JuliaIO/HexEdit.jl)
+- [StrPack.jl](https://github.com/pao/StrPack.jl)
