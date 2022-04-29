@@ -5,7 +5,7 @@
 [![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
 [![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
-Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
+## Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
 
 # Example usage
 ```julia
@@ -30,8 +30,7 @@ buffer = read(io, read_size)
 ```
 
 
-Hex has same fuctions for editing and displaying data in binary files in
-hexadecimal format.
+## Hex has same fuctions for editing and displaying data in binary files in hexadecimal format.
 
 ### Synopsis
 
