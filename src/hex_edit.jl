@@ -113,8 +113,9 @@ function dump!(s::Hex, start=nothing, n=nothing)
         if idx + 1024 > n
             read_size = n - idx
         end
-
+        println("aaaaaaaaaa: $read_size")
         buffer = read(s.hex, read_size)
+        println("bbbbbbbb: $buffer")
         dump_buffer(s, buffer)
         total = total + read_size
     end
