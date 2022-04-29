@@ -7,7 +7,7 @@
 
 Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
 
-### Example usage
+#### Example usage
 ```julia
 julia> using HexIO
 
@@ -29,6 +29,7 @@ buffer = read(io, read_size)
 
 ```
 
+---
 
 ## editing and displaying
 
@@ -46,7 +47,7 @@ Edits targeted binary file by overwriting data beginning at offset.
 - datastr can be in ASCII or hexadecimal format (ie. "foobar" or "0x666f6f626172")
 
 
-### Example usage
+#### Example usage
 
 #### Complete File Hexdump
 
