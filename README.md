@@ -5,6 +5,9 @@
 [![Build Status](https://travis-ci.org/zsz00/HexIO.jl.svg?branch=master)](https://travis-ci.org/zsz00/HexIO.jl)
 [![Coverage](http://codecov.io/github/zsz00/HexIO.jl/coverage.svg?branch=master)](http://codecov.io/github/zsz00/HexIO.jl?branch=master)
 
+
+The HexIO.jl is formed by integrating [StructIO.jl](https://github.com/Keno/StructIO.jl) and [HexEdit.jl](https://github.com/JuliaIO/HexEdit.jl)
+
 Generates IO methods (`pack`, `unpack`) from structure definitions.  Also defines `packed_sizeof` to give the on-disk size of a packed structure, which is smaller than `sizeof` would give, if the struct is marked as `align_packed`.
 
 # Example usage
@@ -106,3 +109,6 @@ Return offset of the start of the hexadecimal signature "b77e"
 hex = Hex("test.bin")
 offset = find!(hex, "0xb77e")
 ```
+
+
+
