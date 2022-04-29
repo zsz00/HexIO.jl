@@ -4,6 +4,7 @@ module HexIO   # HexIO
 using Base: @pure
 using Base.Meta
 export @io, unpack, pack, fix_endian, packed_sizeof
+
 include("hex_edit.jl")
 export Hex, dump!, edit!, find!
 

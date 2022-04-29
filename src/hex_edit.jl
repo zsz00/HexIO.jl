@@ -3,27 +3,37 @@ mutable struct Hex
     hex::IO
     _size::Int
     _offset::UInt64
-end # type HexEd
+end # type Hex
 
+"""
+    Hex(filename::AbstractString)
+
+"""
 function Hex(filename::AbstractString)
     hex        = open(filename, "r+")
     _size  =  filename[1:4]=="\\\\.\\" ? 0 : filesize(filename)
     println("_size:", _size)
     _offset    = 0x00
     Hex(hex, _size, _offset)
-end  # constructor HexEd
+end  # constructor Hex
 
+"""
+    Hex(io::IO)
+
+"""
 function Hex(io::IO)
     hex        = io
     _size  =  stat(io).size
     println("_size:", _size)
     _offset    = 0x00
     Hex(hex, _size, _offset)
-end  # constructor HexEd
+end  # constructor Hex
 
-#----------
-# displays data in hex format
-#----------
+"""
+    dump_line(s::Hex, line::Array{UInt8})
+
+displays data in hex format.
+"""
 function dump_line(s::Hex, line::Array{UInt8})
     llen = length(line)
     plen = llen % 16
@@ -63,10 +73,11 @@ function dump_line(s::Hex, line::Array{UInt8})
     s._offset = s._offset + llen
 end # function dump_line
 
-#----------
-# helper for dump!; iterates buffer and displays data
-# by tasking helper dump_line
-#----------
+"""
+    dump_buffer(s::Hex, buffer::Array{UInt8})
+
+helper for dump!; iterates buffer and displays data by tasking helper dump_line.
+"""
 function dump_buffer(s::Hex, buffer::Array{UInt8})
     blen = length(buffer)
     llen = 16
@@ -81,9 +92,11 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
     end
 end # function dump_buffer
 
-#----------
-# display data chunk of n size beginning at offset
-#----------
+"""
+    dump!(s::Hex, start=nothing, n=nothing)
+
+display data chunk of n size beginning at offset
+"""
 function dump!(s::Hex, start=nothing, n=nothing)
     if n === nothing
         n = s._size
@@ -111,9 +124,11 @@ end # function dump!
 dump!(buf::IO, start=nothing, n=nothing) = dump!(Hex(buf), start, n)
 
 
-#----------
-# converts ASCII string or hexadecimal string to binary byte array
-#----------
+"""
+    hex2bin(rawstr::AbstractString)
+
+converts ASCII string or hexadecimal string to binary byte array
+"""
 function hex2bin(rawstr::AbstractString)
     if (match(r"^0x[0-9a-fA-F]+", rawstr) === nothing)  # If it is not a hexadecimal string
         return Array{UInt8}(rawstr)
@@ -126,9 +141,11 @@ function hex2bin(rawstr::AbstractString)
     hex2bytes(ascii(m.captures[1]))
 end # function hex2bin
 
-#----------
-# edit binary file
-#----------
+"""
+    edit!(s::Hex, datastr::AbstractString, start=nothing)
+
+edit binary file.
+"""
 function edit!(s::Hex, datastr::AbstractString, start=nothing)
     if start !== nothing
         s._offset = convert(UInt64, start)
@@ -142,11 +159,12 @@ function edit!(s::Hex, datastr::AbstractString, start=nothing)
     write(s.hex, databytes)
 end # function edit!
 
-#----------
-# search for binary signature and return the offset or
-# nothing; modify s._offset to point to beginning of
-# located signature
-#----------
+"""
+    find!(s::Hex, sigstr::AbstractString, start=nothing)
+    
+search for binary signature and return the offset or nothing; 
+modify s._offset to point to beginning of located signature
+"""
 function find!(s::Hex, sigstr::AbstractString, start=nothing)
     if start !== nothing
         s._offset = convert(UInt64, start)
