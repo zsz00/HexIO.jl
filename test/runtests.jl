@@ -1,6 +1,12 @@
 using HexIO
 using Test
 
+tests = ["iotest.jl"]
+
+for test in tests
+    include(test)
+end
+
 # First, exercise the `@io` macro a bit, to ensure it can handle different
 # kinds of type declarations
 @io struct TwoUInts
