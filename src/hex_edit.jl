@@ -35,7 +35,6 @@ displays data in hex format.
 function dump_line(s::Hex, line::Array{UInt8})
     llen = length(line)
     plen = llen % 16
-    println("=======", llen)
     print("$(uppercase(string(s._offset, base=16, pad=8))) | ")
     n = 0
     for byte in line
@@ -80,12 +79,11 @@ function dump_buffer(s::Hex, buffer::Array{UInt8})
     blen = length(buffer)
     llen = 16
     idx  = 1
-    println("-------------------------- $blen, $(s._offset)")
+
     while idx < blen
         if idx + 16 > blen
             llen = blen - idx + 1
         end
-        print("**********", llen, blen)
         dump_line(s, buffer[idx:(idx + llen - 1)])
         idx = idx + llen
     end
@@ -113,9 +111,7 @@ function dump!(s::Hex, start=nothing, n=nothing)
         if idx + 1024 > n
             read_size = n - idx
         end
-        println("aaaaaaaaaa: $read_size, $(s._offset)")
         buffer = read(s.hex, read_size)
-        println("bbbbbbbb: $buffer")
         dump_buffer(s, buffer)
         total = total + read_size
     end
