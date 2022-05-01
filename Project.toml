@@ -1,7 +1,7 @@
 name = "HexIO"
 uuid = "53d494c1-5632-5724-8f4c-31dff12d585f"
 repo = "https://github.com/zsz00/HexIO.git"
-version = "0.0.1"
+version = "0.0.2"
 
 [compat]
 julia = "1"
