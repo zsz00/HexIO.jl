@@ -6,24 +6,24 @@ mutable struct Hex
 end # type Hex
 
 """
-    Hex(filename::AbstractString)
+    Hex(filename::AbstractString, _offset::Int=0)
 
 """
 function Hex(filename::AbstractString, _offset::Int=0)
     hex        = open(filename, "r+")
     _size  =  filename[1:4]=="\\\\.\\" ? 0 : filesize(filename)
-    println("_size:", _size)
+    # println("_size:", _size)
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
 """
-    Hex(io::IO)
+    Hex(io::IO, _offset::Int=0)
 
 """
 function Hex(io::IO, _offset::Int=0)
     hex        = io
     _size  =  stat(io).size
-    println("_size:", _size)
+    # println("_size:", _size)
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
@@ -35,7 +35,6 @@ displays data in hex format.
 function dump_line(s::Hex, line::Array{UInt8})
     llen = length(line)
     plen = llen % 16
-
     print("$(uppercase(string(s._offset, base=16, pad=8))) | ")
     n = 0
     for byte in line
@@ -112,7 +111,6 @@ function dump!(s::Hex, start=nothing, n=nothing)
         if idx + 1024 > n
             read_size = n - idx
         end
-
         buffer = read(s.hex, read_size)
         dump_buffer(s, buffer)
         total = total + read_size
