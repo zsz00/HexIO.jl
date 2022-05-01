@@ -12,7 +12,7 @@ end # type Hex
 function Hex(filename::AbstractString, _offset::Int=0)
     hex        = open(filename, "r+")
     _size  =  filename[1:4]=="\\\\.\\" ? 0 : filesize(filename)
-    println("_size:", _size)
+    # println("_size:", _size)
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
@@ -23,7 +23,7 @@ end  # constructor Hex
 function Hex(io::IO, _offset::Int=0)
     hex        = io
     _size  =  stat(io).size
-    println("_size:", _size)
+    # println("_size:", _size)
     Hex(hex, _size, _offset)
 end  # constructor Hex
 
